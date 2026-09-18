@@ -143,6 +143,12 @@ div.printevt {
         <div id="buttons">
             <button ng-hide="form.$pristine || busy" ng-click="onclickSave()">Save</button>
             <button ng-show="(view=='settings') && !busy" ng-click="onclickCancel()">Cancel</button>
+            
+            <!-- NOUVEAU BOUTON D'AJOUT D'ÉVÉNEMENT -->
+            <div class="toolbtn" ng-show="(view=='home') && !busy" title="Ajouter un événement">
+                <button ng-click="onclickAddEvent()" style="cursor:pointer; background:none; border:none; font-size:1.2em; font-weight:bold; color:#333;">+</button>
+            </div>
+
             <div class="toolbtn" ng-show="(view=='home') && !busy">
                 <img src="print.png" title="Print View" draggable="false" ng-click="onclickPrintView()">
             </div>
