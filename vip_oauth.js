@@ -32,7 +32,7 @@ AuthAccount.prototype.Connect = function()
         scope: this.authScope,
         callback: (response) => {
             if (response.error) {
-                // En mode silencieux, si l'utilisateur n'est pas connecté, on bascule proprement sur l'état déconnecté sans erreur bloquante
+                // En mode silencieux, si l'utilisateur n'est pas connecté, on bascule proprement sur l'état déconnecté
                 this.onSignOut();
                 return;
             }
@@ -56,18 +56,20 @@ AuthAccount.prototype.Connect = function()
         },
     });
 
-    // MODIFICATION : Tente une reconnexion silencieuse au chargement de la page
-    try {
-        this.tokenClient.requestAccessToken({prompt: ''});
-    } catch(e) {
-        this.onSignOut();
-    }
+    // CORRECTION : Attend 1 seconde que AngularJS et la page soient prêts avant de lancer la reconnexion silencieuse
+    setTimeout(() => {
+        try {
+            this.tokenClient.requestAccessToken({prompt: ''});
+        } catch(e) {
+            this.onSignOut();
+        }
+    }, 1000);
 }
 
 AuthAccount.prototype.SignIn = function()
 {
     if (this.tokenClient) {
-        // Ouvre la popup de connexion Google uniquement lors d'un clic manuel explicite
+        // Ouvre la popup de consentement Google uniquement lors d'un clic manuel explicite
         this.tokenClient.requestAccessToken({prompt: 'consent'});
     }
 }
