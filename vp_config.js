@@ -10,6 +10,6 @@ ga('create', 'UA-60115120-4', 'auto');
 ga('send', 'pageview');
 
 function ga_hit(category, action) {
-	if (window.ga && ga.loaded)
-		ga('send', 'event', {'eventCategory': category, 'eventAction': action.toString()});
+    if (window.ga && ga.loaded)
+        ga('send', 'event', {'eventCategory': category, 'eventAction': action.toString()});
 }
