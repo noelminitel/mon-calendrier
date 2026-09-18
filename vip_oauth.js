@@ -1,5 +1,5 @@
 //////////////////////////////////////////////////////////////////////
-// AuthAccount - Google Identity Services (GIS) Stable
+// AuthAccount - Google Identity Services (GIS) avec Reconnexion Auto Propre
 //////////////////////////////////////////////////////////////////////
 
 function AuthAccount() {
@@ -27,6 +27,9 @@ AuthAccount.prototype.Connect = function() {
                     scope: self.authScope,
                     callback: function(tokenResponse) {
                         if (tokenResponse.error !== undefined) {
+                            if (tokenResponse.error === 'popup_closed_by_user' || tokenResponse.error === 'access_denied') {
+                                localStorage.removeItem("vp_auto_connect");
+                            }
                             self.Fail(tokenResponse);
                             self.onSignOut();
                             return;
@@ -34,12 +37,28 @@ AuthAccount.prototype.Connect = function() {
                         self.access_token = tokenResponse.access_token;
                         gapi.client.setToken({ access_token: self.access_token });
                         self._isSignedIn = true;
+                        
+                        // On mémorise que l'utilisateur est connecté
+                        localStorage.setItem("vp_auto_connect", "true");
+                        
                         self.fetchUserEmail();
                     }
                 });
 
-                // État initial propre pour éviter l'écran blanc et les boucles de pop-up
-                self.onSignOut();
+                // Si l'utilisateur s'était connecté avant, on tente une reconnexion silencieuse après un délai de sécurité
+                if (localStorage.getItem("vp_auto_connect") === "true") {
+                    setTimeout(function() {
+                        try {
+                            self.tokenClient.requestAccessToken({prompt: 'none'});
+                        } catch(e) {
+                            console.log("Reconnexion silencieuse impossible, une interaction est requise.");
+                            localStorage.removeItem("vp_auto_connect");
+                            self.onSignOut();
+                        }
+                    }, 1000); // 1 seconde de délai pour laisser AngularJS s'afficher sans broncher
+                } else {
+                    self.onSignOut();
+                }
 
             } else {
                 self.onError("Google Identity Services script non chargé.");
@@ -93,6 +112,8 @@ AuthAccount.prototype.SignOut = function() {
             console.log('Token révoqué');
         });
     }
+    // On efface la mémoire de connexion
+    localStorage.removeItem("vp_auto_connect");
     
     this.access_token = null;
     this.userEmail = null;
@@ -128,7 +149,7 @@ AuthAccount.prototype.Fail = function(reason) {
 
 
 //////////////////////////////////////////////////////////////////////
-// AuthAppData
+// AuthAppData (Inchangé)
 //////////////////////////////////////////////////////////////////////
 
 function AuthAppData()
@@ -305,7 +326,7 @@ AuthAppData.prototype.Fail = function(reason)
 
 
 //////////////////////////////////////////////////////////////////////
-// AuthCal
+// AuthCal (Inchangé)
 //////////////////////////////////////////////////////////////////////
 
 function AuthCal()
@@ -532,7 +553,7 @@ AuthCal.prototype.Fail = function(reason)
 
 
 //////////////////////////////////////////////////////////////////////
-// UnAuthCal
+// UnAuthCal (Inchangé)
 //////////////////////////////////////////////////////////////////////
 
 function UnAuthCal()
