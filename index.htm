@@ -51,7 +51,7 @@
             position: relative;
         }
 
-        /* --- Style des cellules (IMPORTANT : position: relative requis) --- */
+        /* --- Style des cellules (Position relative indispensable) --- */
         .vipcell {
             position: relative; 
             height: var(--celloffset, 35px);
@@ -86,7 +86,7 @@
             cursor: pointer;
         }
 
-        /* --- STYLE DU BOUTON D'AJOUT D'ÉVÉNEMENT (+) --- */
+        /* --- CORRECTION CLICS ET AFFICHAGE DU BOUTON D'AJOUT (+) --- */
         .vipgrid .vipcell .vipaddbtn {
             display: none;
             position: absolute;
@@ -103,11 +103,12 @@
             font-size: 14px;
             font-weight: bold;
             cursor: pointer;
-            z-index: 10;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+            z-index: 9999; /* Force le bouton au premier plan */
+            pointer-events: auto !important; /* Force l'interactivité de la souris */
+            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
         }
 
-        /* Affichage du bouton uniquement au survol de la cellule */
+        /* Affichage dynamique uniquement au survol de la cellule correspondante */
         .vipgrid .vipcell:hover .vipaddbtn {
             display: block;
         }
@@ -119,7 +120,7 @@
 </head>
 <body>
 
-    <!-- Barre de filtres de calendrier (optionnelle) -->
+    <!-- Barre de filtres de calendrier -->
     <div id="vipcalbar"></div>
 
     <!-- Conteneur principal de la grille -->
@@ -129,7 +130,7 @@
     <script src="vip_lib(2).js"></script>
     
     <script>
-        // Initialisation de la grille au chargement de la page
+        // Initialisation propre de la grille au chargement complet de la page
         window.onload = function() {
             var grid = new VipGrid("vipgrid", "vipcalbar");
             grid.init();
