@@ -6,12 +6,12 @@
     <title>VIP Calendar</title>
     
     <style>
-        /* --- Styles généraux de la grille VIP --- */
         body {
             font-family: Arial, sans-serif;
             margin: 0;
             padding: 0;
             overflow: hidden;
+            background-color: #ffffff;
         }
 
         .vipgrid {
@@ -51,7 +51,6 @@
             position: relative;
         }
 
-        /* --- Style des cellules (Position relative indispensable) --- */
         .vipcell {
             position: relative; 
             height: var(--celloffset, 35px);
@@ -86,7 +85,7 @@
             cursor: pointer;
         }
 
-        /* --- CORRECTION CLICS ET AFFICHAGE DU BOUTON D'AJOUT (+) --- */
+        /* --- Bouton d'ajout (+) interactif et visible au survol --- */
         .vipgrid .vipcell .vipaddbtn {
             display: none;
             position: absolute;
@@ -103,12 +102,11 @@
             font-size: 14px;
             font-weight: bold;
             cursor: pointer;
-            z-index: 9999; /* Force le bouton au premier plan */
-            pointer-events: auto !important; /* Force l'interactivité de la souris */
+            z-index: 9999;
+            pointer-events: auto !important;
             box-shadow: 0 1px 3px rgba(0,0,0,0.3);
         }
 
-        /* Affichage dynamique uniquement au survol de la cellule correspondante */
         .vipgrid .vipcell:hover .vipaddbtn {
             display: block;
         }
@@ -120,20 +118,19 @@
 </head>
 <body>
 
-    <!-- Barre de filtres de calendrier -->
     <div id="vipcalbar"></div>
-
-    <!-- Conteneur principal de la grille -->
     <div id="vipgrid"></div>
 
-    <!-- Script de la bibliothèque VIP modifiée -->
     <script src="vip_lib(2).js"></script>
     
     <script>
-        // Initialisation propre de la grille au chargement complet de la page
         window.onload = function() {
-            var grid = new VipGrid("vipgrid", "vipcalbar");
-            grid.init();
+            try {
+                var grid = new VipGrid("vipgrid", "vipcalbar");
+                grid.init();
+            } catch (error) {
+                console.error("Erreur lors de l'initialisation du calendrier :", error);
+            }
         };
     </script>
 </body>
