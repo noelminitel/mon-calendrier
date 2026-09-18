@@ -1,5 +1,5 @@
 //////////////////////////////////////////////////////////////////////
-// AuthAccount - Google Identity Services (GIS)
+// AuthAccount - Google Identity Services (GIS) avec Reconnexion Auto
 //////////////////////////////////////////////////////////////////////
 
 function AuthAccount() {
@@ -25,6 +25,7 @@ AuthAccount.prototype.Connect = function() {
                 self.tokenClient = google.accounts.oauth2.initTokenClient({
                     client_id: self.authClientID,
                     scope: self.authScope,
+                    auto_select: true, // Permet la reconnexion automatique en arrière-plan
                     callback: function(tokenResponse) {
                         if (tokenResponse.error !== undefined) {
                             self.Fail(tokenResponse);
@@ -33,10 +34,26 @@ AuthAccount.prototype.Connect = function() {
                         self.access_token = tokenResponse.access_token;
                         gapi.client.setToken({ access_token: self.access_token });
                         self._isSignedIn = true;
+                        
+                        // Mémorisation de la session dans le navigateur
+                        localStorage.setItem("vp_auto_connect", "true");
+                        
                         self.fetchUserEmail();
                     }
                 });
-                self.onSignOut();
+
+                // Si l'utilisateur s'était déjà connecté, on tente de récupérer le token silencieusement
+                if (localStorage.getItem("vp_auto_connect") === "true") {
+                    try {
+                        self.tokenClient.requestAccessToken({prompt: 'none'});
+                    } catch(e) {
+                        console.log("Reconnexion automatique silencieuse impossible.");
+                        self.onSignOut();
+                    }
+                } else {
+                    self.onSignOut();
+                }
+
             } else {
                 self.onError("Google Identity Services script non chargé.");
             }
@@ -89,6 +106,9 @@ AuthAccount.prototype.SignOut = function() {
             console.log('Token révoqué');
         });
     }
+    // Suppression de la mémoire de connexion automatique
+    localStorage.removeItem("vp_auto_connect");
+    
     this.access_token = null;
     this.userEmail = null;
     this._isSignedIn = false;
@@ -522,5 +542,102 @@ AuthCal.prototype.Fail = function(reason)
     try {this.onError(reason.result.error.message);}
     catch(e) {
         try {this.onError(reason.status);} catch(ex) {this.onError("Erreur API Calendar");}
+    }
+}
+
+
+//////////////////////////////////////////////////////////////////////
+// UnAuthCal (Intégré avec ta configuration initiale)
+//////////////////////////////////////////////////////////////////////
+
+function UnAuthCal()
+{
+    // initialise
+    this.datespan = {dtStart: null, dtEnd: null};
+    this.forwardEvent = function(){};
+    this.api_key = "";
+
+    // private
+    this.calendars = {};
+}
+
+UnAuthCal.prototype.addCal = function(id)
+{
+    this.calendars[id] = {clr: "#2b67cf"};
+}
+
+UnAuthCal.prototype.setCalClr = function(id, clr)
+{
+    this.calendars[id].clr = clr;
+}
+
+UnAuthCal.prototype.loadEvents = function()
+{
+    this.isoStart = this.datespan.dtStart.toISOString();
+    this.isoEnd = this.datespan.dtEnd.toISOString();
+
+    for (var id in this.calendars)
+        this.reqEvents(id);
+}
+
+UnAuthCal.prototype.reqEvents = function(id, tok)
+{
+    var path =
+        "https://www.googleapis.com/calendar/v3/calendars/" + encodeURIComponent(id) + "/events" +
+        "?timeMin=" + this.isoStart +
+        "&timeMax=" + this.isoEnd +
+        "&key=" + this.api_key +
+        "&singleEvents=true"
+    ;
+    
+    if (tok)
+        path += ("&pageToken=" + tok);
+
+    var xhttp = new XMLHttpRequest();
+    xhttp.onreadystatechange = this.rcvEvents.bind(this, xhttp, id);
+    xhttp.open("GET", path);
+    xhttp.send();
+}
+
+UnAuthCal.prototype.rcvEvents = function(xhttp, callsign)
+{
+    if (xhttp.readyState == 4 && xhttp.status == 200)
+    {
+        var response = JSON.parse(xhttp.responseText);
+        var cal = this.calendars[callsign];
+        
+        for (var i in response.items)
+        {
+            var item = response.items[i];
+
+            if (item.kind == "calendar#event")
+            if (item.status != "cancelled")
+            if (!item.hasOwnProperty("recurrence"))
+            if (item.hasOwnProperty("start"))
+            {
+                var evt = {
+                    id: item.id,
+                    title: item.summary,
+                    colour: cal.clr,
+                    calendar: response.summary
+                };
+                
+                if ("dateTime" in item.start)
+                {
+                    evt.timed = true;
+                    evt.timespan = {start: item.start.dateTime, end: item.end.dateTime};
+                }
+                else
+                {
+                    evt.timed = false;
+                    evt.datespan = {start: item.start.date, end: item.end.date};
+                }
+
+                this.forwardEvent(evt);
+            }
+        }
+
+        if (response.nextPageToken)
+            this.reqEvents(callsign, response.nextPageToken);
     }
 }
