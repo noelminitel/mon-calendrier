@@ -19,6 +19,7 @@ function AuthAccount()
 
 AuthAccount.prototype.Connect = function()
 {
+    // Empêche toute exécution multiple
     if (this.tokenClient)
         return;
 
@@ -27,16 +28,33 @@ AuthAccount.prototype.Connect = function()
         return;
     }
 
-    // 1. Vérifie si un token valide est déjà stocké dans le navigateur (évite toute popup)
+    // 1. On regarde si un token valide existe déjà en local dans le navigateur
     var savedToken = localStorage.getItem('vp_access_token');
     var savedExpiry = localStorage.getItem('vp_token_expiry');
     var now = new Date().getTime();
 
     if (savedToken && savedExpiry && now < parseInt(savedExpiry)) {
         this.access_token = savedToken;
+        
+        // Initialise quand même le client pour les actions futures (comme le bouton Sign Out)
+        this.tokenClient = google.accounts.oauth2.initTokenClient({
+            client_id: this.authClientID,
+            scope: this.authScope,
+            callback: (response) => {
+                if (response.error) {
+                    this.onSignOut();
+                    return;
+                }
+                this.access_token = response.access_token;
+                var expiresAt = new Date().getTime() + (response.expires_in || 3600) * 1000;
+                localStorage.setItem('vp_access_token', this.access_token);
+                localStorage.setItem('vp_token_expiry', expiresAt);
+                gapi.client.setToken({ access_token: this.access_token });
+            }
+        });
+
         gapi.client.setToken({ access_token: this.access_token });
         
-        // Récupère l'email en arrière-plan
         fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
             headers: { Authorization: 'Bearer ' + this.access_token }
         })
@@ -48,44 +66,40 @@ AuthAccount.prototype.Connect = function()
         .catch(() => {
             this.onSignIn();
         });
-        return;
+    } else {
+        // 2. Si aucun token valide n'est trouvé, on initialise le client SANS AUCUNE POPUP AUTOMATIQUE
+        this.tokenClient = google.accounts.oauth2.initTokenClient({
+            client_id: this.authClientID,
+            scope: this.authScope,
+            callback: (response) => {
+                if (response.error) {
+                    this.onSignOut();
+                    return;
+                }
+                this.access_token = response.access_token;
+                
+                var expiresAt = new Date().getTime() + (response.expires_in || 3600) * 1000;
+                localStorage.setItem('vp_access_token', this.access_token);
+                localStorage.setItem('vp_token_expiry', expiresAt);
+                
+                gapi.client.setToken({ access_token: this.access_token });
+                
+                fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+                    headers: { Authorization: 'Bearer ' + this.access_token }
+                })
+                .then(res => res.json())
+                .then(data => {
+                    this.userEmail = data.email;
+                    this.onSignIn();
+                })
+                .catch(() => {
+                    this.onSignIn();
+                });
+            },
+        });
+
+        this.onSignOut();
     }
-
-    // 2. Sinon, initialise le client normalement pour les futurs clics manuels
-    this.tokenClient = google.accounts.oauth2.initTokenClient({
-        client_id: this.authClientID,
-        scope: this.authScope,
-        callback: (response) => {
-            if (response.error) {
-                this.onSignOut();
-                return;
-            }
-            this.access_token = response.access_token;
-            
-            // Stocke le token pour 1 heure (durée standard Google OAuth)
-            var expiresAt = new Date().getTime() + (response.expires_in || 3600) * 1000;
-            localStorage.setItem('vp_access_token', this.access_token);
-            localStorage.setItem('vp_token_expiry', expiresAt);
-            
-            // Injecte le token dans gapi.client
-            gapi.client.setToken({ access_token: this.access_token });
-            
-            fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-                headers: { Authorization: 'Bearer ' + this.access_token }
-            })
-            .then(res => res.json())
-            .then(data => {
-                this.userEmail = data.email;
-                this.onSignIn();
-            })
-            .catch(() => {
-                this.onSignIn();
-            });
-        },
-    });
-
-    // Pas de reconnexion automatique agressive par popup : on reste sagement sur l'état déconnecté si aucun token valide n'est stocké
-    this.onSignOut();
 }
 
 AuthAccount.prototype.SignIn = function()
