@@ -2,8 +2,8 @@
 
 function AuthAccount()
 {
-    // initialise
-    this.authClientID = undefined;
+    // initialise -> Récupération automatique de l'ID client depuis vp_config.js
+    this.authClientID = typeof vp_oauthClientID !== 'undefined' ? vp_oauthClientID : undefined;
     this.authScope = undefined;
 
     // public
@@ -145,9 +145,6 @@ AuthAccount.prototype.Fail = function(reason)
     console.error("AuthAccount : " + msg);
     this.onError(msg);
 }
-
-
-
 
 //////////////////////////////////////////////////////////////////////
 
@@ -330,9 +327,6 @@ AuthAppData.prototype.Fail = function(reason)
     try {this.onError(reason.result.error.message);}
     catch(e) {this.onError(reason.status || "Erreur réseau");}
 }
-
-
-
 
 //////////////////////////////////////////////////////////////////////
 
