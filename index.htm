@@ -8,6 +8,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto" type="text/css"/>
 <link rel="stylesheet" href="vip.css" type="text/css"/>
 <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.6.4/angular.min.js"></script>
+
 <!-- SDK GOOGLE IDENTITY SERVICES & CLIENT GAPI -->
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="https://apis.google.com/js/client.js"></script>
@@ -15,6 +16,7 @@
 <script src="vip_oauth.js" type='text/javascript'></script>
 <script src="vip_lib.js" type='text/javascript'></script>
 <script src="vp.js" type='text/javascript'></script>
+
 <style>
 body {
     font-family: Arial;
@@ -290,7 +292,12 @@ div.printevt {
 
 <script>
     var app = angular.module("vp", []);
-    app.controller("main", vp_main);
+    // S'assure que vp_main est bien lié au contrôleur principal
+    if (typeof vp_main !== 'undefined') {
+        app.controller("main", vp_main);
+    } else {
+        console.error("Erreur critique : vp_main n'est pas défini dans vp.js !");
+    }
 </script>
 
 </body>
