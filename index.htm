@@ -8,28 +8,6 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto" type="text/css"/>
 <link rel="stylesheet" href="vip.css" type="text/css"/>
 <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.6.4/angular.min.js"></script>
-
-<!-- SCRIPT DE DEBUG : Intercepte et bloque la popup pour identifier le fichier coupable dans la console (F12) -->
-<script>
-    const checkGoogleInterval = setInterval(function() {
-        if (typeof google !== 'undefined' && google.accounts && google.accounts.oauth2) {
-            clearInterval(checkGoogleInterval);
-            const originalInit = google.accounts.oauth2.initTokenClient;
-            google.accounts.oauth2.initTokenClient = function(config) {
-                const client = originalInit(config);
-                const originalRequest = client.requestAccessToken;
-                client.requestAccessToken = function(opt) {
-                    console.error("🚨 ALERTE : Une tentative d'ouverture de popup Google a été interceptée ! Regardez la trace ci-dessous :");
-                    console.trace(); // Affiche la ligne exacte et le fichier responsable
-                    return; // Bloque l'ouverture de la popup
-                };
-                return client;
-            };
-            console.log("🛡️ Intercepteur de popup Google actif.");
-        }
-    }, 50);
-</script>
-
 <!-- SDK GOOGLE IDENTITY SERVICES & CLIENT GAPI -->
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="https://apis.google.com/js/client.js"></script>
