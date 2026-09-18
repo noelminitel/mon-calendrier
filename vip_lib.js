@@ -600,7 +600,6 @@ VipGrid.prototype.create_calendar_event = function()
 		vdtEnd.offsetDay(1);  // end date is exclusive
 		
 		window.open("https://www.google.com/calendar/r/eventedit?dates=" + vdtStart.ymdnum() + "/" + vdtEnd.ymdnum());
-		ga_hit("feature", "create_event");
 	}
 }
 
@@ -673,7 +672,7 @@ VipGrid.prototype.ontouchend = function(event)
 	this.ontouchcancel();
 }
 
-VipGrid.prototype.ontouchcancel = function(event)
+VipGrid.prototype.ontouchcancel = function()
 {
 	this.touch.id = null;
 }
@@ -1073,12 +1072,12 @@ function VipCell(parent, vipcol, ymd)
 		this.vipnum.addClass("viplink");
 	}
 	
-	// Ajout dynamique du bouton d'ajout d'événement
+	// Bouton d'ajout d'événement injecté proprement
 	this.vipaddbtn = new VipDiv(this, "vipaddbtn");
 	this.vipaddbtn.setText("+");
 	this.vipaddbtn.div.title = "Ajouter un événement";
 	this.vipaddbtn.div.onclick = this.onclickAddButton.bind(this);
-	
+
 	this.vipevts = new VipDiv(this, "vipcellevts");
 }
 
@@ -1132,7 +1131,7 @@ VipCell.prototype.onclickDayNumber = function(event)
 
 VipCell.prototype.onclickAddButton = function(event)
 {
-	event.stopPropagation();
+	if (event) event.stopPropagation();
 	var vdtStart = new VipDate(this.ymd);
 	var vdtEnd = new VipDate(this.ymd);
 	vdtEnd.offsetDay(1);  // La date de fin est exclusive pour Google Calendar
@@ -1366,7 +1365,7 @@ function VipCalendarBtn(parent, cal, cssrule)
 
 VipCalendarBtn.prototype = new VipObject;
 
-VipCalendarBtn.prototype.onclickCalBtn = function(event)
+VipCalendarBtn.prototype.onclickCalBtn = function()
 {
 	this.checked = !this.checked;
 	this.updateUI();
