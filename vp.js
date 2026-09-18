@@ -2,7 +2,7 @@ function vp_main($scope, $timeout, $window)
 {
     var gAccount = new AuthAccount();
     gAccount.authClientID = vp_oauthClientID;
-    gAccount.authScope = 'https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/drive.appdata';
+    gAccount.authScope = 'https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/drive.appdata';
 
     var gAppData = new AuthAppData();
     gAppData.file_name = "settings001.json";
@@ -23,6 +23,53 @@ function vp_main($scope, $timeout, $window)
     $scope.busy = false;
     $scope.sign_msg = "Signed Out";
     $scope.g_signbtn_ok = true;
+
+    // --- Gestion de la sélection de cellule et de l'ajout d'événement ---
+    $scope.selectedCell = null;
+
+    $scope.onSelectDay = function(cell) {
+        $scope.selectedCell = ($scope.selectedCell === cell) ? null : cell;
+    };
+
+    $scope.onAddEventClick = function($event, cell) {
+        $event.stopPropagation(); // Évite de fermer la sélection au clic
+
+        var eventTitle = prompt("Entrez le titre de l'événement :");
+        if (!eventTitle) return;
+
+        // Utilise la date de la cellule (format YYYY-MM-DD stocké lors de l'initialisation du print view)
+        var eventDate = cell.dateStr;
+        if (!eventDate) {
+            alert("Erreur : Impossible de récupérer la date de cette cellule.");
+            return;
+        }
+
+        var resource = {
+            'summary': eventTitle,
+            'start': { 'date': eventDate },
+            'end': { 'date': eventDate }
+        };
+
+        // Appel à l'API Google Calendar pour ajouter l'événement dans l'agenda principal
+        gapi.client.calendar.events.insert({
+            'calendarId': 'primary',
+            'resource': resource
+        }).then(function(response) {
+            console.log('Événement créé avec succès :', response);
+            $scope.selectedCell = null;
+            
+            // Recharger la vue d'impression / grille pour afficher le nouvel événement
+            initPrintView();
+            if (typeof window.cal !== 'undefined' && window.cal.loadEvents) {
+                window.cal.loadEvents();
+            }
+            $scope.$apply();
+        }, function(error) {
+            console.error('Erreur lors de la création de l\'événement :', error);
+            alert("Erreur lors de l'ajout de l'événement sur Google Calendar.");
+        });
+    };
+    // -------------------------------------------------------------------
 
     gAccount.onSignIn = function() {
         $scope.sign_msg = gAccount.getEmail();
@@ -127,6 +174,7 @@ function vp_main($scope, $timeout, $window)
             gCal.onError = onCalError;
 
             vg.registerEventSource(gCal);
+            window.cal = gCal; // Permet d'y accéder globalement si besoin
         }
 
         vg.cfg = $scope.settings.vipconfig;
@@ -160,7 +208,7 @@ function vp_main($scope, $timeout, $window)
             var row = {cells: []};
 
             for (var j=0; j < vipinfo.cols.length; j++)
-                row.cells.push({days: []});
+                row.cells.push({days: [], dateStr: null});
 
             $scope.printinfo.rows.push(row);
         }
@@ -176,6 +224,12 @@ function vp_main($scope, $timeout, $window)
 
                 var printcell = $scope.printinfo.rows[icell + vipcol.offset].cells[icol];
                 printcell.colour = vipcell.colour;
+
+                // Extraction ou construction d'une chaîne de date YYYY-MM-DD exploitable par Google Calendar
+                if (vipcell.date) {
+                    var d = new Date(vipcell.date);
+                    printcell.dateStr = d.toISOString().split('T')[0];
+                }
 
                 var day = {num: vipcell.num, evts: []};
 
