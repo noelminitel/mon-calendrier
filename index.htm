@@ -8,7 +8,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto" type="text/css"/>
 <link rel="stylesheet" href="vip.css" type="text/css"/>
 <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.6.4/angular.min.js"></script>
-<!-- NOUVEAU SDK GOOGLE IDENTITY SERVICES & CLIENT GAPI -->
+<!-- SDK GOOGLE IDENTITY SERVICES & CLIENT GAPI -->
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="https://apis.google.com/js/client.js"></script>
 <script src="vp_config.js" type='text/javascript'></script>
@@ -186,10 +186,9 @@ div.printevt {
     </div>
     <div class="sub group"><b>Account</b>
         <div class="sub">{{sign_msg}}</div>
-        <div class="sub" ng-show="g_signbtn_ok"><div id="g_signbtn" class="g-signin2" data-width="300" data-height="60" data-longtitle="true"></div></div>
         <div class="sub" ng-show="signed_in"><a href="https://myaccount.google.com/permissions" target="_blank">Permissions</a></div>
         <div class="sub" ng-show="signed_in"><a href="https://drive.google.com/drive/my-drive" target="_blank">Manage Application Data</a>  (Drive > Settings > Manage Apps)</div>
-        <div class="sub" ng-hide="signed_in || g_signbtn_ok"><button ng-click="onclickSignIn();">Sign In</button></div>
+        <div class="sub" ng-hide="signed_in"><button ng-click="onclickSignIn();">Sign In</button></div>
         <div class="sub" ng-show="signed_in"><button ng-click="onclickSignOut();">Sign Out</button></div>
     </div>
     <form name="form" ng-show="signed_in">
