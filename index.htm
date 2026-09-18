@@ -9,7 +9,7 @@
 <link rel="stylesheet" href="vip.css" type="text/css"/>
 <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.6.4/angular.min.js"></script>
 <script src="https://apis.google.com/js/api.js"></script>
- <script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="vp_config.js" type='text/javascript'></script>
 <script src="vip_oauth.js" type='text/javascript'></script>
 <script src="vip_lib.js" type='text/javascript'></script>
@@ -91,11 +91,14 @@ td.printhdr {
 }
 td.printcell {
     padding: 0.2em;
+    position: relative;
+    cursor: pointer;
 }
 td.printcellnum {
     font-size: 0.8em;
     text-align: center;
     width: 2em;
+    position: relative;
 }
 div.printevt {
     padding: 0.2em 0;
@@ -119,6 +122,28 @@ div.printevt {
 }
 #settings .monthnames {
     width: 30em;
+}
+/* Style pour le bouton d'ajout d'événement */
+.add-event-btn {
+    position: absolute;
+    top: 0;
+    right: 0;
+    background-color: #2b67cf;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 18px;
+    height: 18px;
+    font-weight: bold;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    z-index: 10;
+}
+.add-event-btn:hover {
+    background-color: #1a4b9b;
 }
 @media only print
 {
@@ -161,10 +186,13 @@ div.printevt {
         </thead>
         <tbody>
             <tr ng-repeat="row in printinfo.rows">
-                <td class="printcell" ng-repeat="cell in row.cells" ng-style="{'background-color': cell.colour}">
+                <td class="printcell" ng-repeat="cell in row.cells" ng-style="{'background-color': cell.colour}" ng-click="onSelectDay(cell)">
                     <table ng-repeat="day in cell.days">
                         <tr>
-                            <td class="printcellnum">{{day.num}}</td>
+                            <td class="printcellnum">
+                                {{day.num}}
+                                <button ng-if="selectedCell === cell" ng-click="onAddEventClick($event, cell)" class="add-event-btn">+</button>
+                            </td>
                             <td><div class="printevt" ng-repeat="evt in day.evts"><span ng-style="{color: evt.colour}">&#x25fc;</span>{{evt.title}}</div></td>
                         </tr>
                     </table>
