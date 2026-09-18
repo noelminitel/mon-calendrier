@@ -105,13 +105,6 @@ div.printevt {
     padding-left: 2em;
     padding-bottom: 4em;
 }
-#settings #gismigration {
-    background-color: #e6f4ea;
-    color: #137333;
-    padding: 1em 3em;
-    margin: 2em 15% 0 15%;
-    border-radius: 4px;
-}
 #settings .sub {
     min-width: 50vw;
     padding-top: 1em;
@@ -181,16 +174,11 @@ div.printevt {
     </table>
 </div>
 <div id="settings" ng-show="view=='settings'">
-    <div id="gismigration">
-        <h3><center>Mise à jour Google Identity Services (GIS)</center></h3>
-        <p>L'application utilise désormais l'authentification standard Google Identity Services.</p>
-    </div>
     <div class="sub group"><b>Account</b>
         <div class="sub">{{sign_msg}}</div>
-        <div class="sub" ng-show="g_signbtn_ok"><div id="g_signbtn"></div></div>
         <div class="sub" ng-show="signed_in"><a href="https://myaccount.google.com/permissions" target="_blank">Permissions</a></div>
-        <div class="sub" ng-show="signed_in"><a href="https://drive.google.com/drive/my-drive" target="_blank">Manage Application Data</a>  (Drive > Settings > Manage Apps)</div>
-        <div class="sub" ng-hide="signed_in || g_signbtn_ok"><button ng-click="onclickSignIn();">Sign In</button></div>
+        <div class="sub" ng-show="signed_in"><a href="https://drive.google.com/drive/my-drive" target="_blank">Manage Application Data</a> (Drive > Settings > Manage Apps)</div>
+        <div class="sub" ng-hide="signed_in"><button ng-click="onclickSignIn();">Sign In</button></div>
         <div class="sub" ng-show="signed_in"><button ng-click="onclickSignOut();">Sign Out</button></div>
     </div>
     <form name="form" ng-show="signed_in">
