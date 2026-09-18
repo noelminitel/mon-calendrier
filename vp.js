@@ -2,7 +2,8 @@ function vp_main($scope, $timeout, $window)
 {
     var gAccount = new AuthAccount();
     gAccount.authClientID = vp_oauthClientID;
-    gAccount.authScope = 'https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/drive.appdata';
+    // Ajout du scope Google Tasks en plus du calendrier et de la sauvegarde
+    gAccount.authScope = 'https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/tasks https://www.googleapis.com/auth/drive.appdata';
 
     var gAppData = new AuthAppData();
     gAppData.file_name = "settings001.json";
@@ -24,52 +25,72 @@ function vp_main($scope, $timeout, $window)
     $scope.sign_msg = "Signed Out";
     $scope.g_signbtn_ok = true;
 
-    // --- Gestion de la sélection de cellule et de l'ajout d'événement ---
-    $scope.selectedCell = null;
+    // --- Logique de choix et d'ajout d'Événement ou Tâche au survol ---
+    $scope.onAddChoiceClick = function($event, cell) {
+        $event.stopPropagation();
 
-    $scope.onSelectDay = function(cell) {
-        $scope.selectedCell = ($scope.selectedCell === cell) ? null : cell;
-    };
-
-    $scope.onAddEventClick = function($event, cell) {
-        $event.stopPropagation(); // Évite de fermer la sélection au clic
-
-        var eventTitle = prompt("Entrez le titre de l'événement :");
-        if (!eventTitle) return;
-
-        // Utilise la date de la cellule (format YYYY-MM-DD stocké lors de l'initialisation du print view)
         var eventDate = cell.dateStr;
         if (!eventDate) {
-            alert("Erreur : Impossible de récupérer la date de cette cellule.");
+            alert("Erreur : Date introuvable pour cette cellule.");
             return;
         }
 
-        var resource = {
-            'summary': eventTitle,
-            'start': { 'date': eventDate },
-            'end': { 'date': eventDate }
-        };
+        var choice = prompt("Voulez-vous créer un [E]vénement (Calendar) ou une [T]âche (Tasks) ? (Tapez E ou T)", "E");
+        if (!choice) return;
 
-        // Appel à l'API Google Calendar pour ajouter l'événement dans l'agenda principal
-        gapi.client.calendar.events.insert({
-            'calendarId': 'primary',
-            'resource': resource
-        }).then(function(response) {
-            console.log('Événement créé avec succès :', response);
-            $scope.selectedCell = null;
-            
-            // Recharger la vue d'impression / grille pour afficher le nouvel événement
-            initPrintView();
-            if (typeof window.cal !== 'undefined' && window.cal.loadEvents) {
-                window.cal.loadEvents();
-            }
-            $scope.$apply();
-        }, function(error) {
-            console.error('Erreur lors de la création de l\'événement :', error);
-            alert("Erreur lors de l'ajout de l'événement sur Google Calendar.");
-        });
+        if (choice.toUpperCase() === "E") {
+            // Création d'un événement Google Calendar
+            var eventTitle = prompt("Titre de l'événement pour le " + eventDate + " :");
+            if (!eventTitle) return;
+
+            var resource = {
+                'summary': eventTitle,
+                'start': { 'date': eventDate },
+                'end': { 'date': eventDate }
+            };
+
+            gapi.client.calendar.events.insert({
+                'calendarId': 'primary',
+                'resource': resource
+            }).then(function(response) {
+                console.log('Événement créé avec succès :', response);
+                initPrintView();
+                if (window.cal && window.cal.loadEvents) {
+                    window.cal.loadEvents();
+                }
+                $scope.$apply();
+            }, function(error) {
+                console.error('Erreur API Calendar :', error);
+                alert("Erreur lors de la création de l'événement.");
+            });
+
+        } else if (choice.toUpperCase() === "T") {
+            // Création d'une tâche Google Tasks
+            var taskTitle = prompt("Titre de la tâche pour le " + eventDate + " :");
+            if (!taskTitle) return;
+
+            var dueDateTime = eventDate + "T00:00:00.000Z";
+
+            gapi.client.load('tasks', 'v1', function() {
+                var taskResource = {
+                    'title': taskTitle,
+                    'due': dueDateTime
+                };
+
+                gapi.client.tasks.tasks.insert({
+                    'tasklist': '@default',
+                    'resource': taskResource
+                }).then(function(response) {
+                    console.log('Tâche créée avec succès :', response);
+                    alert("Tâche ajoutée avec succès à Google Tasks !");
+                }, function(error) {
+                    console.error('Erreur API Tasks :', error);
+                    alert("Erreur lors de l'ajout de la tâche.");
+                });
+            });
+        }
     };
-    // -------------------------------------------------------------------
+    // -----------------------------------------------------------------
 
     gAccount.onSignIn = function() {
         $scope.sign_msg = gAccount.getEmail();
@@ -174,7 +195,7 @@ function vp_main($scope, $timeout, $window)
             gCal.onError = onCalError;
 
             vg.registerEventSource(gCal);
-            window.cal = gCal; // Permet d'y accéder globalement si besoin
+            window.cal = gCal;
         }
 
         vg.cfg = $scope.settings.vipconfig;
@@ -225,7 +246,6 @@ function vp_main($scope, $timeout, $window)
                 var printcell = $scope.printinfo.rows[icell + vipcol.offset].cells[icol];
                 printcell.colour = vipcell.colour;
 
-                // Extraction ou construction d'une chaîne de date YYYY-MM-DD exploitable par Google Calendar
                 if (vipcell.date) {
                     var d = new Date(vipcell.date);
                     printcell.dateStr = d.toISOString().split('T')[0];
