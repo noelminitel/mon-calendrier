@@ -1,143 +1,152 @@
 //////////////////////////////////////////////////////////////////////
-// vp.js - Contrôleur principal et logique de l'application Visual Planner
 
-function vp_main($scope, $timeout) {
+function AuthAccount()
+{
+    // initialise
+    this.authClientID = undefined;
+    this.authScope = undefined;
 
-    // Initialisation des états de vue et des messages
-    $scope.view = "home";
-    $scope.signed_in = false;
-    $scope.sign_msg = "Not signed in";
-    $scope.busy = false;
+    // public
+    this.onSignIn = function(){};
+    this.onSignOut = function(){};
+    this.onError = function(msg){};
 
-    // Options de configuration par défaut pour les sélecteurs
-    $scope.multi_col_count_options = {
-        1: "1", 2: "2", 3: "3", 4: "4", 6: "6", 12: "12"
-    };
-
-    // Configuration par défaut de l'application et des vues
-    $scope.settings = {
-        banner_text: "Visual Planner",
-        vipconfig: {
-            multi_col_count: 4,
-            multi_col_count_portrait: 1,
-            auto_scroll: true,
-            auto_scroll_offset: 0,
-            first_month: 1,
-            weekends: [0, 6],
-            first_day_of_week: 1,
-            align_weekends: false,
-            font_scale: 1,
-            past_opacity: 0.5,
-            month_names: "Jan,Feb,Mar,Apr,May,Jun,Jul,Aug,Sep,Oct,Nov,Dec",
-            show_event_time: true,
-            show_event_title: true,
-            show_event_marker: true,
-            colour_event_title: false,
-            proportional_events: false,
-            proportional_start_hour: 8,
-            proportional_end_hour: 18,
-            show_all_day_events: true,
-            single_day_as_multi_day: false,
-            show_timed_events: true,
-            multi_day_as_single_day: false,
-            first_day_only: false,
-            marker_width: 1,
-            multi_day_opacity: 1
-        }
-    };
-
-    $scope.printinfo = {
-        fontsize: "1em",
-        cols: [],
-        rows: []
-    };
-
-    // Gestion de l'authentification Google (via vip_oauth.js)
-    var account = new AuthAccount();
-    account.authClientID = typeof VP_CLIENT_ID !== 'undefined' ? VP_CLIENT_ID : '';
-    account.authScope = "https://www.googleapis.com/auth/calendar.readonly";
-
-    account.onSignIn = function() {
-        $scope.$applyAsync(function() {
-            $scope.signed_in = true;
-            $scope.sign_msg = "Signed in as " + account.getEmail();
-            $scope.view = "home";
-            // Lancement du chargement du calendrier après connexion
-            if (typeof LoadCalendar === 'function') {
-                LoadCalendar();
-            }
-        });
-    };
-
-    account.onSignOut = function() {
-        $scope.$applyAsync(function() {
-            $scope.signed_in = false;
-            $scope.sign_msg = "Not signed in";
-            $scope.view = "settings";
-        });
-    };
-
-    account.onError = function(msg) {
-        $scope.$applyAsync(function() {
-            $scope.sign_msg = "Error: " + msg;
-        });
-    };
-
-    // Actions des boutons de l'interface utilisateur
-    $scope.onclickSignIn = function() {
-        account.SignIn();
-    };
-
-    $scope.onclickSignOut = function() {
-        account.SignOut();
-    };
-
-    $scope.onclickSettings = function() {
-        $scope.view = "settings";
-    };
-
-    $scope.onclickPrintView = function() {
-        $scope.view = "print";
-        if (typeof BuildPrintView === 'function') {
-            BuildPrintView();
-        }
-    };
-
-    $scope.onclickClosePrintView = function() {
-        $scope.view = "home";
-    };
-
-    $scope.onclickSave = function() {
-        $scope.busy = true;
-        if (typeof SaveSettings === 'function') {
-            SaveSettings(function() {
-                $scope.$applyAsync(function() {
-                    $scope.busy = false;
-                    if ($scope.form) {
-                        $scope.form.$setPristine();
-                    }
-                });
-            });
-        } else {
-            $scope.busy = false;
-        }
-    };
-
-    $scope.onclickCancel = function() {
-        if (typeof LoadSettings === 'function') {
-            LoadSettings();
-        }
-        $scope.view = "home";
-        if ($scope.form) {
-            $scope.form.$setPristine();
-        }
-    };
-
-    // Initialisation du système au démarrage de la page
-    angular.element(document).ready(function() {
-        if (typeof LoadSettings === 'function') {
-            LoadSettings();
-        }
-        account.Connect();
-    });
+    // private
+    this.tokenClient = null;
+    this.access_token = null;
+    this.userEmail = null;
 }
+
+AuthAccount.prototype.Connect = function()
+{
+    // 1. On vérifie si un token valide est enregistré dans le navigateur
+    var savedToken = localStorage.getItem('vp_access_token');
+    var savedExpiry = localStorage.getItem('vp_token_expiry');
+    var now = new Date().getTime();
+
+    if (savedToken && savedExpiry && now < parseInt(savedExpiry)) {
+        this.access_token = savedToken;
+        
+        // Attente de l'objet gapi pour injecter le token en arrière-plan
+        var checkGapi = setInterval(() => {
+            if (typeof gapi !== 'undefined' && gapi.client) {
+                clearInterval(checkGapi);
+                gapi.client.setToken({ access_token: this.access_token });
+                
+                fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+                    headers: { Authorization: 'Bearer ' + this.access_token }
+                })
+                .then(res => res.json())
+                .then(data => {
+                    this.userEmail = data.email;
+                    this.onSignIn();
+                })
+                .catch(() => {
+                    this.onSignIn();
+                });
+            }
+        }, 100);
+        return;
+    }
+
+    // 2. Si aucun token valide n'existe, on prépare uniquement le client Google pour le clic manuel.
+    // AUCUNE POPUP NE S'OUVRE TOUTE SEULE.
+    var initTimer = setInterval(() => {
+        if (typeof google !== 'undefined' && google.accounts && google.accounts.oauth2) {
+            clearInterval(initTimer);
+            
+            if (!this.tokenClient) {
+                this.tokenClient = google.accounts.oauth2.initTokenClient({
+                    client_id: this.authClientID,
+                    scope: this.authScope,
+                    callback: (response) => {
+                        if (response.error) {
+                            this.onSignOut();
+                            return;
+                        }
+                        this.access_token = response.access_token;
+                        
+                        var expiresAt = new Date().getTime() + (response.expires_in || 3600) * 1000;
+                        localStorage.setItem('vp_access_token', this.access_token);
+                        localStorage.setItem('vp_token_expiry', expiresAt);
+                        
+                        if (typeof gapi !== 'undefined' && gapi.client) {
+                            gapi.client.setToken({ access_token: this.access_token });
+                        }
+                        
+                        fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+                            headers: { Authorization: 'Bearer ' + this.access_token }
+                        })
+                        .then(res => res.json())
+                        .then(data => {
+                            this.userEmail = data.email;
+                            this.onSignIn();
+                        })
+                        .catch(() => {
+                            this.onSignIn();
+                        });
+                    },
+                });
+            }
+        }
+    }, 200);
+
+    // On indique à l'application de rester sagement sur l'écran déconnecté (bouton Sign In)
+    this.onSignOut();
+}
+
+AuthAccount.prototype.SignIn = function()
+{
+    if (this.tokenClient) {
+        // La popup ne s'ouvre QUE lorsque vous cliquez explicitement sur "Sign In"
+        this.tokenClient.requestAccessToken({prompt: 'consent'});
+    }
+}
+
+AuthAccount.prototype.SignOut = function()
+{
+    if (this.access_token) {
+        google.accounts.oauth2.revoke(this.access_token, () => {});
+    }
+    this.access_token = null;
+    this.userEmail = null;
+    
+    // Nettoyage du stockage local à la déconnexion
+    localStorage.removeItem('vp_access_token');
+    localStorage.removeItem('vp_token_expiry');
+
+    if (typeof gapi !== 'undefined' && gapi.client) {
+        gapi.client.setToken(null);
+    }
+    this.onSignOut();
+}
+
+AuthAccount.prototype.isSignedIn = function()
+{
+    return (this.access_token !== null && this.access_token !== undefined);
+}
+
+AuthAccount.prototype.getEmail = function()
+{
+    return this.userEmail;
+}
+
+AuthAccount.prototype.Fail = function(reason)
+{
+    var msg = "";
+    if (reason.error)
+    {
+        msg = "[" + reason.error + "]";
+        if (reason.message)
+            msg += " " + reason.message;
+    }
+    else {
+        msg = JSON.stringify(reason);
+    }
+
+    console.error("AuthAccount : " + msg);
+    this.onError(msg);
+}
+
+//////////////////////////////////////////////////////////////////////
+// (Les objets AuthAppData et AuthCal restent inchangés en dessous)
