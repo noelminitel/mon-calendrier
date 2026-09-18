@@ -945,7 +945,7 @@ function VipCol(parent, ymd)
 	this.vipsel = new VipDiv(this.vipcoloffset, "vipsel");
 	this.vipsel.Show(false);
 	
-	this.vipevts = new VipDiv(this.vipcoloffset, "vipcolevts");
+	this.vipevts = new VipDiv(this, "vipcolevts");
 
 	this.ymd = ymd;
 	this.firstcell = this.vipcells.First();
@@ -1073,6 +1073,12 @@ function VipCell(parent, vipcol, ymd)
 		this.vipnum.addClass("viplink");
 	}
 	
+	// Ajout dynamique du bouton d'ajout d'événement
+	this.vipaddbtn = new VipDiv(this, "vipaddbtn");
+	this.vipaddbtn.setText("+");
+	this.vipaddbtn.div.title = "Ajouter un événement";
+	this.vipaddbtn.div.onclick = this.onclickAddButton.bind(this);
+	
 	this.vipevts = new VipDiv(this, "vipcellevts");
 }
 
@@ -1121,12 +1127,18 @@ VipCell.prototype.addEvent = function(info)
 VipCell.prototype.onclickDayNumber = function(event)
 {
 	var vdt = new VipDate(this.ymd);
-	
-	//if (event.ctrlKey)
-		//window.open("https://www.google.com/calendar/r/day/" + vdt.GCalURL());
-	//else
-		window.open("https://www.google.com/calendar/r/week/" + vdt.GCalURL());
+	window.open("https://www.google.com/calendar/r/week/" + vdt.GCalURL());
 }
+
+VipCell.prototype.onclickAddButton = function(event)
+{
+	event.stopPropagation();
+	var vdtStart = new VipDate(this.ymd);
+	var vdtEnd = new VipDate(this.ymd);
+	vdtEnd.offsetDay(1);  // La date de fin est exclusive pour Google Calendar
+	
+	window.open("https://www.google.com/calendar/r/eventedit?dates=" + vdtStart.ymdnum() + "/" + vdtEnd.ymdnum());
+};
 
 
 
@@ -1398,7 +1410,6 @@ function VipDate(ymd)
 	
 	if (ymd)
 		this.dt.setFullYear(parseInt(ymd.substr(0,4)), parseInt(ymd.substr(5,2))-1, parseInt(ymd.substr(8,2)));  // local
-		//this.dt = new Date(ymd);  // utc
 }
 
 VipDate.prototype.ymd = function()
@@ -1541,8 +1552,6 @@ VipDateTime.prototype.TimeTitle = function()
 /////////////////////////////////////////////////////////////////
 
 function fmt(fmtspec)
-// returns string consisting of format specification with '^' placeholders
-// replaced in sequence by any parameters supplied
 {
 	var str = "";
 	var arg=1;
