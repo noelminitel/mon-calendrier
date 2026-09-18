@@ -89,21 +89,24 @@ td.printhdr {
     text-align: center;
     padding: 1em;
 }
+
+/* Configuration de la cellule pour le survol */
 td.printcell {
     padding: 0.2em;
     position: relative;
-    cursor: pointer;
 }
+
 td.printcellnum {
     font-size: 0.8em;
     text-align: center;
     width: 2em;
-    position: relative;
 }
+
 div.printevt {
     padding: 0.2em 0;
     word-wrap: break-word;
 }
+
 #settings {
     padding-left: 2em;
     padding-bottom: 4em;
@@ -123,28 +126,35 @@ div.printevt {
 #settings .monthnames {
     width: 30em;
 }
-/* Style pour le bouton d'ajout d'événement */
+
+/* Style et masquage du bouton + par défaut, affiché au survol de la cellule */
 .add-event-btn {
+    display: none;
     position: absolute;
-    top: 0;
-    right: 0;
-    background-color: #2b67cf;
+    top: 2px;
+    right: 2px;
+    background-color: #5c6bc0;
     color: white;
     border: none;
-    border-radius: 50%;
-    width: 18px;
-    height: 18px;
+    border-radius: 4px;
+    width: 22px;
+    height: 22px;
     font-weight: bold;
     cursor: pointer;
-    display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 11px;
+    font-size: 14px;
     z-index: 10;
 }
-.add-event-btn:hover {
-    background-color: #1a4b9b;
+
+td.printcell:hover .add-event-btn {
+    display: flex;
 }
+
+.add-event-btn:hover {
+    background-color: #3f51b5;
+}
+
 @media only print
 {
     .noprint {
@@ -186,14 +196,17 @@ div.printevt {
         </thead>
         <tbody>
             <tr ng-repeat="row in printinfo.rows">
-                <td class="printcell" ng-repeat="cell in row.cells" ng-style="{'background-color': cell.colour}" ng-click="onSelectDay(cell)">
+                <td class="printcell" ng-repeat="cell in row.cells" ng-style="{'background-color': cell.colour}">
                     <table ng-repeat="day in cell.days">
                         <tr>
-                            <td class="printcellnum">
-                                {{day.num}}
-                                <button ng-if="selectedCell === cell" ng-click="onAddEventClick($event, cell)" class="add-event-btn">+</button>
+                            <td class="printcellnum">{{day.num}}</td>
+                            <td style="position: relative;">
+                                <div class="printevt" ng-repeat="evt in day.evts">
+                                    <span ng-style="{color: evt.colour}">&#x25fc;</span>{{evt.title}}
+                                </div>
+                                <!-- Bouton + affiché au survol -->
+                                <button ng-click="onAddChoiceClick($event, cell)" class="add-event-btn" title="Ajouter un événement ou une tâche">+</button>
                             </td>
-                            <td><div class="printevt" ng-repeat="evt in day.evts"><span ng-style="{color: evt.colour}">&#x25fc;</span>{{evt.title}}</div></td>
                         </tr>
                     </table>
                 </td>
