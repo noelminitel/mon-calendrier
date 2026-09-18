@@ -1,5 +1,5 @@
 //////////////////////////////////////////////////////////////////////
-// AuthAccount - Google Identity Services (GIS) avec Reconnexion Auto
+// AuthAccount - Google Identity Services (GIS) avec Reconnexion Auto Sécurisée
 //////////////////////////////////////////////////////////////////////
 
 function AuthAccount() {
@@ -25,31 +25,37 @@ AuthAccount.prototype.Connect = function() {
                 self.tokenClient = google.accounts.oauth2.initTokenClient({
                     client_id: self.authClientID,
                     scope: self.authScope,
-                    auto_select: true, // Permet la reconnexion automatique en arrière-plan
                     callback: function(tokenResponse) {
                         if (tokenResponse.error !== undefined) {
+                            if (tokenResponse.error === 'interaction_required' || tokenResponse.error === 'login_required' || tokenResponse.error === 'popup_closed_by_user') {
+                                localStorage.removeItem("vp_auto_connect");
+                            }
                             self.Fail(tokenResponse);
+                            self.onSignOut();
                             return;
                         }
                         self.access_token = tokenResponse.access_token;
                         gapi.client.setToken({ access_token: self.access_token });
                         self._isSignedIn = true;
                         
-                        // Mémorisation de la session dans le navigateur
+                        // Mémorisation de la session
                         localStorage.setItem("vp_auto_connect", "true");
                         
                         self.fetchUserEmail();
                     }
                 });
 
-                // Si l'utilisateur s'était déjà connecté, on tente de récupérer le token silencieusement
+                // Tentative de reconnexion automatique sécurisée avec délai pour éviter le blocage UI
                 if (localStorage.getItem("vp_auto_connect") === "true") {
-                    try {
-                        self.tokenClient.requestAccessToken({prompt: 'none'});
-                    } catch(e) {
-                        console.log("Reconnexion automatique silencieuse impossible.");
-                        self.onSignOut();
-                    }
+                    setTimeout(function() {
+                        try {
+                            self.tokenClient.requestAccessToken({prompt: 'none'});
+                        } catch(e) {
+                            console.log("Reconnexion automatique silencieuse impossible :", e);
+                            localStorage.removeItem("vp_auto_connect");
+                            self.onSignOut();
+                        }
+                    }, 500);
                 } else {
                     self.onSignOut();
                 }
@@ -106,7 +112,7 @@ AuthAccount.prototype.SignOut = function() {
             console.log('Token révoqué');
         });
     }
-    // Suppression de la mémoire de connexion automatique
+    // Suppression propre de la mémoire de connexion
     localStorage.removeItem("vp_auto_connect");
     
     this.access_token = null;
@@ -547,7 +553,7 @@ AuthCal.prototype.Fail = function(reason)
 
 
 //////////////////////////////////////////////////////////////////////
-// UnAuthCal (Intégré avec ta configuration initiale)
+// UnAuthCal
 //////////////////////////////////////////////////////////////////////
 
 function UnAuthCal()
