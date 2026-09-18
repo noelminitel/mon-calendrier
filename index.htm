@@ -5,13 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mon Calendrier</title>
     
-    <!-- Styles CSS de base (ajustez selon vos fichiers CSS locaux si vous en avez) -->
     <style>
         body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background-color: #f4f4f9; }
         header { background: #333; color: #fff; padding: 15px; text-align: center; border-radius: 5px; }
         .container { margin-top: 20px; background: #fff; padding: 20px; border-radius: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        button { padding: 8, 15px; cursor: pointer; }
+        button { padding: 8px 15px; cursor: pointer; margin: 5px; }
     </style>
+
+    <!-- Votre ID client Google OAuth -->
+    <script>
+        var vp_oauthClientID = '749475982945-me64prs1nn6og0ghqj7ifgc4c6js71ta.apps.googleusercontent.com';
+        var VP_CLIENT_ID = vp_oauthClientID; // Rétrocompatibilité
+    </script>
 
     <!-- AngularJS 1.6.4 -->
     <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.6.4/angular.min.js"></script>
@@ -22,7 +27,6 @@
 </head>
 <body ng-controller="main">
 
-    <!-- En-tête de l'application -->
     <header>
         <h1>{{settings.banner_text}}</h1>
         <p>{{sign_msg}}</p>
@@ -35,10 +39,8 @@
         </div>
     </header>
 
-    <!-- Contenu principal géré par les vues AngularJS -->
     <div class="container">
-        
-        <!-- Vue Accueil / Calendrier -->
+        <!-- Vue Accueil -->
         <div ng-show="view == 'home'">
             <h2>Mon Calendrier</h2>
             <p ng-hide="signed_in">Veuillez vous connecter pour afficher votre calendrier.</p>
@@ -51,7 +53,6 @@
             <form name="form">
                 <label>Texte de la bannière :</label><br>
                 <input type="text" ng-model="settings.banner_text" style="width: 100%; padding: 8px; margin-top: 5px;"><br><br>
-                
                 <button type="button" ng-click="onclickSave()">Enregistrer</button>
                 <button type="button" ng-click="onclickCancel()">Annuler</button>
             </form>
@@ -62,42 +63,86 @@
             <h2>Aperçu avant impression</h2>
             <p>Génération de la vue d'impression en cours...</p>
         </div>
-
     </div>
 
-    <!-- Vos scripts personnalisés -->
+    <!-- Script d'authentification -->
     <script src="vip_oauth.js"></script>
-    <script src="vp.js"></script>
 
-    <!-- Sécurité de secours si vp_main n'est pas trouvé dans vp.js -->
+    <!-- Contrôleur principal intégré -->
     <script>
-        if (typeof vp_main === 'undefined') {
-            console.warn("Avertissement : vp_main n'était pas défini, chargement du contrôleur de secours.");
-            window.vp_main = function($scope) {
-                $scope.view = "home";
-                $scope.signed_in = false;
-                $scope.sign_msg = "Non connecté";
-                $scope.settings = { banner_text: "Mon Calendrier" };
-                
-                var account = new AuthAccount();
-                account.authClientID = typeof VP_CLIENT_ID !== 'undefined' ? VP_CLIENT_ID : '';
-                account.authScope = "https://www.googleapis.com/auth/calendar.readonly";
+        function vp_main($scope, $timeout) {
+            $scope.view = "home";
+            $scope.signed_in = false;
+            $scope.sign_msg = "Non connecté";
+            $scope.busy = false;
 
-                account.onSignIn = function() {
-                    $scope.$applyAsync(() => { $scope.signed_in = true; $scope.sign_msg = "Connecté : " + account.getEmail(); });
-                };
-                account.onSignOut = function() {
-                    $scope.$applyAsync(() => { $scope.signed_in = false; $scope.sign_msg = "Non connecté"; $scope.view = "settings"; });
-                };
-
-                $scope.onclickSignIn = () => account.SignIn();
-                $scope.onclickSignOut = () => account.SignOut();
-                $scope.onclickSettings = () => $scope.view = "settings";
-                $scope.onclickPrintView = () => $scope.view = "print";
-                $scope.onclickClosePrintView = () => $scope.view = "home";
-
-                account.Connect();
+            $scope.multi_col_count_options = { 1: "1", 2: "2", 3: "3", 4: "4", 6: "6", 12: "12" };
+            
+            $scope.settings = {
+                banner_text: "Mon Calendrier",
+                vipconfig: { multi_col_count: 4, auto_scroll: true }
             };
+
+            var account = new AuthAccount();
+            account.authClientID = typeof vp_oauthClientID !== 'undefined' ? vp_oauthClientID : (typeof VP_CLIENT_ID !== 'undefined' ? VP_CLIENT_ID : '');
+            account.authScope = "https://www.googleapis.com/auth/calendar.readonly";
+
+            account.onSignIn = function() {
+                $scope.$applyAsync(function() {
+                    $scope.signed_in = true;
+                    $scope.sign_msg = "Connecté en tant que : " + account.getEmail();
+                    $scope.view = "home";
+                    if (typeof LoadCalendar === 'function') LoadCalendar();
+                });
+            };
+
+            account.onSignOut = function() {
+                $scope.$applyAsync(function() {
+                    $scope.signed_in = false;
+                    $scope.sign_msg = "Non connecté";
+                    $scope.view = "settings";
+                });
+            };
+
+            account.onError = function(msg) {
+                $scope.$applyAsync(function() {
+                    $scope.sign_msg = "Erreur : " + msg;
+                });
+            };
+
+            $scope.onclickSignIn = function() { account.SignIn(); };
+            $scope.onclickSignOut = function() { account.SignOut(); };
+            $scope.onclickSettings = function() { $scope.view = "settings"; };
+            $scope.onclickPrintView = function() { 
+                $scope.view = "print"; 
+                if (typeof BuildPrintView === 'function') BuildPrintView();
+            };
+            $scope.onclickClosePrintView = function() { $scope.view = "home"; };
+
+            $scope.onclickSave = function() {
+                $scope.busy = true;
+                if (typeof SaveSettings === 'function') {
+                    SaveSettings(function() {
+                        $scope.$applyAsync(function() {
+                            $scope.busy = false;
+                            if ($scope.form) $scope.form.$setPristine();
+                        });
+                    });
+                } else {
+                    $scope.busy = false;
+                }
+            };
+
+            $scope.onclickCancel = function() {
+                if (typeof LoadSettings === 'function') LoadSettings();
+                $scope.view = "home";
+                if ($scope.form) $scope.form.$setPristine();
+            };
+
+            angular.element(document).ready(function() {
+                if (typeof LoadSettings === 'function') LoadSettings();
+                account.Connect();
+            });
         }
 
         var app = angular.module("vp", []);
