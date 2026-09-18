@@ -2,7 +2,7 @@
 
 function AuthAccount()
 {
-    // initialise
+    // initialise 
     this.authClientID = undefined;
     this.authScope = undefined;
 
